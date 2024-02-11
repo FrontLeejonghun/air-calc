@@ -1,5 +1,6 @@
+import type theme from '@/styles/theme';
+
 import '@emotion/react';
-import theme from '@/styles/theme';
 
 type GlobalTheme = typeof theme;
 declare module '@emotion/react' {
