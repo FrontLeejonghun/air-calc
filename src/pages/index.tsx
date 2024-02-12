@@ -95,16 +95,19 @@ interface FormData {
     usingAir: number;
     stayTime: number;
   };
-  planSac: number;
+  rmv: number;
+  tankLiter: number;
+  startAir: number;
+  planTime: number;
 }
 
 export default function Index() {
   const { register, handleSubmit, setValue, control, getValues } =
     useForm<FormData>({});
 
-  const [sacResult, planSac] = useWatch({
+  const [sacResult, rmv] = useWatch({
     control,
-    name: ['sacResult', 'planSac'],
+    name: ['sacResult', 'rmv'],
   });
 
   const getAta = (depth: number, ceil: boolean = true) => {
@@ -119,7 +122,7 @@ export default function Index() {
     const calcAir = usingAir / stayTime;
 
     const Ata = getAta(depth);
-    const sac = Math.ceil(calcAir / Ata);
+    const sac = calcAir / Ata;
 
     setValue('sacResult', {
       calcAir,
@@ -131,10 +134,10 @@ export default function Index() {
   };
 
   const calcPlanSAC = () => {
+    // (탱크 리터 * 시작 공기압) * SAC = RMV
     const Ata = getAta(getValues('planDepth'), false);
-    const planSac = sacResult.sac * Ata;
-    console.log(planSac, 'planSac', Ata);
-    setValue('planSac', planSac);
+    const rmv = getValues('tankLiter') * sacResult.sac * Ata;
+    setValue('rmv', rmv);
   };
 
   return (
@@ -197,12 +200,12 @@ export default function Index() {
                 <dd>(사용한 공기량 / 머무른 시간) / 절대 압력 = SAC</dd>
                 <dd>
                   ({sacResult.usingAir} / {sacResult.stayTime}) /{' '}
-                  {sacResult.Ata} ={sacResult.sac}
+                  {sacResult.Ata} = {sacResult.sac.toLocaleString()}
                 </dd>
               </Result>
 
               <Result>
-                <dt>SAC :</dt> <dd>{sacResult.sac} Bar/min</dd>
+                <dt>SAC :</dt> <dd>{sacResult.sac.toLocaleString()} Bar/min</dd>
               </Result>
             </>
           )}
@@ -212,10 +215,34 @@ export default function Index() {
 
         {sacResult && (
           <Content>
-            <Title>계획중인 다이빙 공기소모량 계산기</Title>
+            <Title>RMV(Respiratory Minute Volume) 계산기</Title>
 
             <InputContentWrap>
-              <Label htmlFor={'plan-depth'}>계획 다이빙 최대수심:</Label>
+              <Label htmlFor={'tank-liter'}>탱크 리터:</Label>
+              <Input
+                id={'tank-liter'}
+                {...register('tankLiter')}
+                inputMode={'numeric'}
+                placeholder={'Liter 단위로 입력해주세요.'}
+                type={'number'}
+              />
+              L
+            </InputContentWrap>
+
+            <InputContentWrap>
+              <Label htmlFor={'plan-time'}>계획된 다이빙 시간 :</Label>
+              <Input
+                id={'plan-time'}
+                {...register('planTime')}
+                inputMode={'numeric'}
+                placeholder={'분 단위로 입력해주세요.'}
+                type={'number'}
+              />
+              분
+            </InputContentWrap>
+
+            <InputContentWrap>
+              <Label htmlFor={'plan-depth'}>계획된 수심:</Label>
               <Input
                 id={'plan-depth'}
                 {...register('planDepth')}
@@ -225,20 +252,57 @@ export default function Index() {
               />
               M
             </InputContentWrap>
-            {planSac && (
+            {rmv && (
               <>
                 <Result>
-                  <dt>최대 수심 공기 소모량</dt>
-                  <dd>{planSac} Bar/min</dd>
+                  <dt>계산식</dt>
+                  <dd>탱크 리터 * SAC = RMV</dd>
+                  <dd>
+                    {getValues('tankLiter')} *{' '}
+                    {getValues('sacResult.sac').toLocaleString()} ={' '}
+                    {(
+                      getValues('tankLiter') * getValues('sacResult.sac')
+                    ).toLocaleString()}
+                    L / min
+                  </dd>
                 </Result>
                 <Result>
-                  <dt>
-                    다이빙 가능 시간 200Bar 기준
-                    <br />
-                    (비상 60Bar)
-                  </dt>
-                  <dd>200 - 60 = 140</dd>
-                  <dd>{(140 / planSac).toFixed(2)}분</dd>
+                  <dt>수심 기준 다이빙 공기 소모율</dt>
+                  <dd>RMV * 절대 압력 = 수심 기준 다이빙 공기 소모율</dd>
+                  <dd>
+                    {(
+                      getValues('tankLiter') * getValues('sacResult.sac')
+                    ).toLocaleString()}{' '}
+                    * {getAta(getValues('planDepth'), false)} ={' '}
+                    {(
+                      getValues('tankLiter') *
+                      getValues('sacResult.sac') *
+                      getAta(getValues('planDepth'), false)
+                    ).toLocaleString()}
+                    L / min
+                  </dd>
+                </Result>
+                <Result>
+                  <dt>계획된 다이빙 시간 기준 공기 소모율</dt>
+                  <dd>
+                    수심 기준 다이빙 공기 소모율 * 계획된 다이빙 타임 = 계획된
+                    다이빙 시간 기준 공기 소모율{' '}
+                  </dd>
+                  <dd>
+                    {(
+                      getValues('tankLiter') *
+                      getValues('sacResult.sac') *
+                      getAta(getValues('planDepth'), false)
+                    ).toLocaleString()}{' '}
+                    * {getValues('planTime')} ={' '}
+                    {(
+                      getValues('tankLiter') *
+                      getValues('sacResult.sac') *
+                      getAta(getValues('planDepth'), false) *
+                      getValues('planTime')
+                    ).toLocaleString()}{' '}
+                    L / {getValues('planTime')} min
+                  </dd>
                 </Result>
               </>
             )}
